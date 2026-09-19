@@ -1,0 +1,392 @@
+
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+
+    <title>Driver Socket Test</title>
+
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            padding: 30px;
+        }
+
+        input {
+            width: 400px;
+            padding: 8px;
+            margin: 5px 0 15px;
+        }
+
+        button {
+            padding: 10px 20px;
+            margin-right: 10px;
+            cursor: pointer;
+        }
+
+        #output {
+            margin-top: 20px;
+            padding: 15px;
+            background: #f2f2f2;
+            white-space: pre-wrap;
+        }
+    </style>
+</head>
+
+<body>
+
+    <h2>🚌 Driver Socket Test</h2>
+
+    <label>
+        Driver JWT Token
+    </label>
+
+    <br>
+
+    <input
+        id="token"
+        type="text"
+        placeholder="Paste Driver JWT here"
+    >
+
+    <br>
+
+    <label>
+        Trip ID
+    </label>
+
+    <br>
+
+    <input
+        id="tripId"
+        type="number"
+        placeholder="Example: 12"
+    >
+
+    <br>
+
+    <button onclick="connectDriver()">
+        Connect Driver
+    </button>
+
+    <button onclick="sendLocation()">
+        Send Location
+    </button>
+
+    <br>
+
+    <h3>Location</h3>
+
+    <label>
+        Latitude
+    </label>
+
+    <br>
+
+    <input
+        id="latitude"
+        type="number"
+        step="any"
+        value="26.2183"
+    >
+
+    <br>
+
+    <label>
+        Longitude
+    </label>
+
+    <br>
+
+    <input
+        id="longitude"
+        type="number"
+        step="any"
+        value="78.1828"
+    >
+
+    <br>
+
+    <label>
+        Speed (km/h)
+    </label>
+
+    <br>
+
+    <input
+        id="speed"
+        type="number"
+        value="30"
+    >
+
+    <h3>Output</h3>
+
+    <pre id="output"></pre>
+
+
+    <script src="https://cdn.socket.io/4.8.1/socket.io.min.js"></script>
+
+    <script>
+
+        let socket = null;
+
+
+        function log(message) {
+
+            const output =
+                document.getElementById("output");
+
+            output.textContent +=
+                message + "\n";
+        }
+
+
+        function connectDriver() {
+
+            const token =
+                document.getElementById("token")
+                    .value
+                    .trim();
+
+            const tripId =
+                Number(
+                    document.getElementById("tripId")
+                        .value
+                );
+
+
+            if (!token) {
+
+                alert(
+                    "Driver JWT token required"
+                );
+
+                return;
+            }
+
+
+            if (
+                !Number.isInteger(tripId) ||
+                tripId <= 0
+            ) {
+
+                alert(
+                    "Valid Trip ID required"
+                );
+
+                return;
+            }
+
+
+            log(
+                "Connecting Driver socket..."
+            );
+
+
+            socket = io(
+                "http://localhost:5000",
+                {
+                    auth: {
+                        token: token
+                    }
+                }
+            );
+
+
+            socket.on(
+                "connect",
+                () => {
+
+                    log(
+                        "Driver socket connected: " +
+                        socket.id
+                    );
+
+
+                    socket.emit(
+                        "driver:join",
+                        {
+                            trip_id: tripId
+                        }
+                    );
+
+                }
+            );
+
+
+            socket.on(
+                "driver:joined",
+                (data) => {
+
+                    log(
+                        "Driver joined:"
+                    );
+
+                    log(
+                        JSON.stringify(
+                            data,
+                            null,
+                            2
+                        )
+                    );
+
+                }
+            );
+
+
+            socket.on(
+                "driver:location_saved",
+                (data) => {
+
+                    log(
+                        "Location saved:"
+                    );
+
+                    log(
+                        JSON.stringify(
+                            data,
+                            null,
+                            2
+                        )
+                    );
+
+                }
+            );
+
+
+            socket.on(
+                "driver:error",
+                (data) => {
+
+                    log(
+                        "Driver error:"
+                    );
+
+                    log(
+                        JSON.stringify(
+                            data,
+                            null,
+                            2
+                        )
+                    );
+
+                }
+            );
+
+
+            socket.on(
+                "connect_error",
+                (error) => {
+
+                    log(
+                        "Connection error: " +
+                        error.message
+                    );
+
+                }
+            );
+
+
+            socket.on(
+                "disconnect",
+                (reason) => {
+
+                    log(
+                        "Driver disconnected: " +
+                        reason
+                    );
+
+                }
+            );
+        }
+
+
+        function sendLocation() {
+
+            if (!socket) {
+
+                alert(
+                    "First connect Driver socket"
+                );
+
+                return;
+            }
+
+
+            if (!socket.connected) {
+
+                alert(
+                    "Driver socket is not connected"
+                );
+
+                return;
+            }
+
+
+            const tripId =
+                Number(
+                    document.getElementById("tripId")
+                        .value
+                );
+
+
+            const latitude =
+                Number(
+                    document.getElementById("latitude")
+                        .value
+                );
+
+
+            const longitude =
+                Number(
+                    document.getElementById("longitude")
+                        .value
+                );
+
+
+            const speed =
+                Number(
+                    document.getElementById("speed")
+                        .value
+                );
+
+
+            const locationData = {
+
+                trip_id: tripId,
+
+                latitude: latitude,
+
+                longitude: longitude,
+
+                speed: speed
+
+            };
+
+
+            socket.emit(
+                "driver:location",
+                locationData
+            );
+
+
+            log(
+                "Location sent:"
+            );
+
+
+            log(
+                JSON.stringify(
+                    locationData,
+                    null,
+                    2
+                )
+            );
+        }
+
+    </script>
+
+</body>
+
+</html
