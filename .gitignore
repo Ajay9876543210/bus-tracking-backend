@@ -16,3 +16,5 @@ Thumbs.db
 coverage/
 dist/
 build/
+
+bus_tracking_backup.sql
